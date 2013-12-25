@@ -2,6 +2,11 @@
 #include <plib.h>
 #include "U1.h"
 
+/*
+ * UART1 init function.
+ * Works well at baud 9600 & 500k with pb_clock of 50M
+ * Must configure PPS for U1RX and U1TX after calling init
+ */
 float U1_init(unsigned int pb_clock, int baud)
 {
     float actual_baud;

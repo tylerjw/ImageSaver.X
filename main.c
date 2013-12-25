@@ -40,9 +40,23 @@
 
 #define SYS_CLK 100000000L // 100MHz
 
+#define CCLR    BIT_2
+#define CLK     BIT_3
+#define CE1     BIT_0
+#define CE2     BIT_1
+#define WE1     BIT_8
+#define WE2     BIT_7
+
 //	Function Prototypes
 int main(void);
 void delay(volatile unsigned int count);
+void mem_init();
+void inline __attribute__((always_inline)) mem_reset_addr();
+void inline __attribute__((always_inline)) mem_write_init();
+void inline __attribute__((always_inline)) mem_write_16(unsigned int data);
+void inline __attribute__((always_inline)) mem_read_init();
+unsigned int inline __attribute__((always_inline)) mem_read_16();
+void mem_test_16();
 
 int main(void) {
     char buffer[80];
@@ -73,6 +87,8 @@ int main(void) {
     sprintf(buffer, "actual baud: %f\r\n", actual_baud);
     U1_write(buffer);
 
+    mem_test_16();
+
     while (1) {
         mPORTEWrite(0);
         U1_write("Hello World!\r\n");
@@ -85,4 +101,70 @@ int main(void) {
 void delay(volatile unsigned int count)
 {
     while(--count);
+}
+
+void mem_init()
+{
+    PORTSetPinsDigitalOut(IOPORT_F, CCLR | CLK | WE1 | WE2 | CE1 | CE2);
+    mPORTFWrite(0x0000);
+    mem_reset_addr();
+}
+
+void inline __attribute__((always_inline)) mem_reset_addr()
+{
+    mPORTFClearBits(CLK | CCLR);
+    mPORTFSetBits(CCLR);
+}
+
+void inline __attribute__((always_inline)) mem_write_init()
+{
+    mPORTDSetPinsDigitalOut(0xFFFF);
+    mPORTDWrite(0x0000);
+}
+
+void inline __attribute__((always_inline)) mem_write_16(unsigned int data)
+{
+    mPORTFSetBits(WE1 | WE2 | CE1 | CE2);
+    mPORTFSetBits(CLK); // increment address
+    mPORTDWrite(data); // write data
+    __asm("nop");
+    mPORTFClearBits(WE1 | WE2 | CE1 | CE2);
+    mPORTFClearBits(CLK);
+}
+
+void inline __attribute__((always_inline)) mem_read_init()
+{
+    mPORTDSetPinsDigitalIn(0xFFFF);
+    mPORTFSetBits(WE1 | WE2);
+    mPORTFClearBits(CLK | CE1 | CE2);
+}
+
+unsigned int inline __attribute__((always_inline)) mem_read_16()
+{
+    mPORTFSetBits(CLK); // increment address
+    __asm("nop");
+    __asm("nop");
+    __asm("nop");
+    __asm("nop");
+    __asm("nop");
+    return mPORTDRead();
+}
+
+void mem_test_16()
+{
+    unsigned int input_data = 0xFFFF;
+    unsigned int test_data;
+    char buffer[80];
+    mem_init();
+    mem_write_init();
+    mem_write_16(input_data);
+    mPORTEWrite(BIT_4);
+    mem_reset_addr();
+    mem_read_init();
+    test_data = mem_read_16();
+    mPORTEWrite(0);
+    sprintf(buffer,"Wrote: 0x%04x\r\n", input_data);
+    U1_write(buffer);
+    sprintf(buffer,"Read back: 0x%04x\r\n", test_data);
+    U1_write(buffer);
 }

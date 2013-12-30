@@ -36,6 +36,8 @@
 #include <p32xxxx.h>
 #include <plib.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include "timer1.h"
 #include "U1.h"
 
 #define SYS_CLK 100000000L // 100MHz
@@ -46,6 +48,8 @@
 #define CE2     BIT_1
 #define WE1     BIT_8
 #define WE2     BIT_7
+
+float time_base = 0.0;
 
 //	Function Prototypes
 int main(void);
@@ -75,7 +79,7 @@ int main(void) {
     PPSLock;
     
     actual_baud = U1_init(pb_clock, baud);
-
+    /*
     sprintf(buffer, "SYSCLK: %d\r\n", SYS_CLK);
     U1_write(buffer);
     sprintf(buffer, "PBCLK: %d\r\n", pb_clock);
@@ -86,12 +90,14 @@ int main(void) {
     U1_write(buffer);
     sprintf(buffer, "actual baud: %f\r\n", actual_baud);
     U1_write(buffer);
-
+    */
+    U1_write("Initializing timer1... \r\n");
+    timer1_init();
+    U1_write("Running memory test... \r\n");
     mem_test_16();
 
     while (1) {
         mPORTEWrite(0);
-        U1_write("Hello World!\r\n");
         delay(SYS_CLK/4);
         mPORTEWrite(BIT_4);
         delay(SYS_CLK/4);
@@ -112,31 +118,62 @@ void mem_init()
 
 void inline __attribute__((always_inline)) mem_reset_addr()
 {
+    float time;
+    char buffer[80];
+    timer1_start_us();
+
     mPORTFClearBits(CLK | CCLR);
     mPORTFSetBits(CCLR);
+
+    time = timer1_end_us() - time_base;
+    sprintf(buffer, "mem_reset_addr(): %f us\r\n", time);
+    U1_write(buffer);
 }
 
 void inline __attribute__((always_inline)) mem_write_init()
 {
+    float time;
+    char buffer[80];
+    timer1_start_us();
+
     mPORTDSetPinsDigitalOut(0xFFFF);
     mPORTDWrite(0x0000);
+
+    time = timer1_end_us() - time_base;
+    sprintf(buffer, "mem_write_init(): %f us\r\n", time);
+    U1_write(buffer);
 }
 
 void inline __attribute__((always_inline)) mem_write_16(unsigned int data)
 {
-    mPORTFSetBits(WE1 | WE2 | CE1 | CE2);
-    mPORTFSetBits(CLK); // increment address
+//    float time;
+//    char buffer[80];
+//    timer1_start_us();
+
+    mPORTFSetBits(WE1 | WE2 | CE1 | CE2 | CLK);
     mPORTDWrite(data); // write data
     __asm("nop");
-    mPORTFClearBits(WE1 | WE2 | CE1 | CE2);
-    mPORTFClearBits(CLK);
+    mPORTFClearBits(WE1 | WE2 | CE1 | CE2 | CLK);
+    __asm("nop");
+
+//    time = timer1_end_us() - time_base;
+//    sprintf(buffer, "mem_write_16(): %f us\r\n", time);
+//    U1_write(buffer);
 }
 
 void inline __attribute__((always_inline)) mem_read_init()
 {
+    float time;
+    char buffer[80];
+    timer1_start_us();
+
     mPORTDSetPinsDigitalIn(0xFFFF);
     mPORTFSetBits(WE1 | WE2);
     mPORTFClearBits(CLK | CE1 | CE2);
+
+    time = timer1_end_us() - time_base;
+    sprintf(buffer, "mem_read_init(): %f us\r\n", time);
+    U1_write(buffer);
 }
 
 unsigned int inline __attribute__((always_inline)) mem_read_16()
@@ -146,25 +183,91 @@ unsigned int inline __attribute__((always_inline)) mem_read_16()
     __asm("nop");
     __asm("nop");
     __asm("nop");
+    mPORTFClearBits(CLK);
     __asm("nop");
+    __asm("nop");
+    __asm("nop");
+    __asm("nop");
+
     return mPORTDRead();
 }
 
+#define values 307200
+
 void mem_test_16()
 {
-    unsigned int input_data = 0xFFFF;
+    //const unsigned int values = 2000;
+//    unsigned int input_data[values];
+//    unsigned int test_data[values];
     unsigned int test_data;
+    unsigned int input_data = 0x0000;
     char buffer[80];
+    unsigned int i;
+    float time;
+    bool passed = true;
+
+    // load test data
+//    for(i=0;i<values;i++)
+//        input_data[i] = 0xffff - i;
+
+    timer1_start_us();
+    time_base = timer1_end_us();
+//    sprintf(buffer, "time_base: %f us\r\n", time_base);
+//    U1_write(buffer);
     mem_init();
     mem_write_init();
-    mem_write_16(input_data);
-    mPORTEWrite(BIT_4);
+    U1_write("Writing 307200 16-bit values...\r\n");
+    timer1_start_us();
+    for(i=0;i<values;i++)
+    {
+        //input_data = (unsigned int)(0xffff - i) & 0xffff;
+        mem_write_16(input_data);
+    }
+    time = timer1_end_us();
+    sprintf(buffer, "Total Write: %f us, Average: %f us, Freq: %f MHz\r\n", time, time / values, 1.0/(time/values));
+    U1_write(buffer);
+//    mPORTEWrite(BIT_4);
     mem_reset_addr();
     mem_read_init();
-    test_data = mem_read_16();
-    mPORTEWrite(0);
-    sprintf(buffer,"Wrote: 0x%04x\r\n", input_data);
-    U1_write(buffer);
-    sprintf(buffer,"Read back: 0x%04x\r\n", test_data);
-    U1_write(buffer);
+    U1_write("Reading 307200 16-bit values...\r\n");
+//    timer1_start_us();
+    for(i=0;i<values;i++)
+    {
+        test_data = mem_read_16();
+        //input_data = (unsigned int)(0xffff - i) & 0xffff;
+        if(input_data == test_data)
+        {
+            //sprintf(buffer,"%d - Wrote: 0x%04x - Read: 0x%04x - Pass!\r\n", i, (0xffff - i), test_data);
+            //U1_write(buffer);
+        }
+        else
+        {
+            passed = false;
+            sprintf(buffer,"%d - Wrote: 0x%04x - Read: 0x%04x - Fail!\r\n", i, input_data, test_data);
+            U1_write(buffer);
+        }
+    }
+//    time = timer1_end_us();
+//    sprintf(buffer, "Total Read: %f us, Average: %f us, Freq: %f MHz\r\n", time, time / values, 1.0/(time/values));
+//    U1_write(buffer);
+//    mPORTEWrite(0);
+//    U1_write("Comparing all read values to those written...\r\n");
+//    for(i=0; i < values; i++)
+//    {
+//        if(input_data[i] == test_data[i])
+//        {
+//            sprintf(buffer,"%d - Wrote: 0x%04x - Read: 0x%04x - Pass!\r\n", i, input_data[i], test_data[i]);
+//            //U1_write(buffer);
+//        }
+//        else
+//        {
+//            passed = false;
+//            sprintf(buffer,"%d - Wrote: 0x%04x - Read: 0x%04x - Fail!\r\n", i, input_data[i], test_data[i]);
+//            U1_write(buffer);
+//        }
+//    }
+    if(passed)
+    {
+        U1_write("Passed all tests!\r\n");
+    }
 }

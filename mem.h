@@ -23,6 +23,9 @@ void mem_init();
 void inline __attribute__((always_inline)) mem_reset_addr();
 void inline __attribute__((always_inline)) mem_write_init();
 void inline __attribute__((always_inline)) mem_write_16(unsigned int data);
+void inline __attribute__((always_inline)) mem_write_640_1(unsigned int *data); // writes 640 8bit values to bank 1
+void inline __attribute__((always_inline)) mem_write_640_2(unsigned int *data); // writes 640 8bit values to bank 2
+//void inline __attribute__((always_inline)) mem_read_640_1(unsigned int *data); // reads 640 8bit values from bank 1
 void inline __attribute__((always_inline)) mem_read_init();
 unsigned int inline __attribute__((always_inline)) mem_read_16();
 

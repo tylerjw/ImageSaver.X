@@ -48,8 +48,8 @@ float time_base = 0.0;
 //	Function Prototypes
 int main(void);
 void delay(volatile unsigned int count);
-
 void mem_test_16();
+void mem_test_lines();
 
 int main(void) {
     char buffer[80];
@@ -83,13 +83,13 @@ int main(void) {
     U1_write("Initializing timer1... \r\n");
     timer1_init();
     U1_write("Running memory test... \r\n");
-    mem_test_16();
+    mem_test_lines();
 
     while (1) {
         mPORTEWrite(0);
-        delay(SYS_CLK/4);
+        timer1_delay_ms(1000);
         mPORTEWrite(BIT_4);
-        delay(SYS_CLK/4);
+        timer1_delay_ms(1000);
     }
 }
 
@@ -175,5 +175,59 @@ void mem_test_16()
     if(passed)
     {
         U1_write("Passed all tests!\r\n");
+    }
+}
+
+void mem_test_lines()
+{
+    unsigned int output_data[640];
+    unsigned int input_data[640];
+    int i;
+    bool passed = true;
+    char buffer[80];
+    float time;
+
+    for(i=0;i<640;i++)
+        output_data[i] = (i) & 0xff | ((i << 8) & 0xff00);
+
+    sprintf(buffer, "output data 2: 0x%04x\r\n", output_data[2]);
+    U1_write(buffer);
+
+    timer1_start_us();
+    time_base = timer1_end_us();
+
+    mem_init();
+
+    //mem_reset_addr();
+    timer1_start_us();
+    mem_write_640_2(output_data);
+    time = timer1_end_us();
+    sprintf(buffer, "Total Write 2: %f us, Average: %f us, Freq: %f MHz\r\n", time, time / 640, 1.0/(time/640));
+    U1_write(buffer);
+    
+    mem_reset_addr();
+    timer1_start_us();
+    mem_write_640_1(output_data);
+    time = timer1_end_us();
+    sprintf(buffer, "Total Write 1: %f us, Average: %f us, Freq: %f MHz\r\n", time, time / 640, 1.0/(time/640));
+    U1_write(buffer);
+
+    mem_reset_addr();
+    mem_read_init();
+    for(i=0;i<640;i++)
+        input_data[i] = mem_read_16();
+
+    for(i=0;i<640;i++)
+    {
+        if(output_data[i] != input_data[i]) // bad data
+        {
+            passed = false;
+            sprintf(buffer,"%d - Wrote: 0x%04x - Read: 0x%04x - Fail!\r\n", i, output_data[i], input_data[i]);
+            U1_write(buffer);
+        }
+    }
+    if(passed)
+    {
+        U1_write("Passed All Tests\r\n");
     }
 }

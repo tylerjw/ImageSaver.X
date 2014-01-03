@@ -45,17 +45,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=configuration_bits.c main.c U1.c timer1.c
+SOURCEFILES_QUOTED_IF_SPACED=configuration_bits.c main.c U1.c timer1.c mem.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/configuration_bits.o ${OBJECTDIR}/main.o ${OBJECTDIR}/U1.o ${OBJECTDIR}/timer1.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/configuration_bits.o.d ${OBJECTDIR}/main.o.d ${OBJECTDIR}/U1.o.d ${OBJECTDIR}/timer1.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/configuration_bits.o ${OBJECTDIR}/main.o ${OBJECTDIR}/U1.o ${OBJECTDIR}/timer1.o ${OBJECTDIR}/mem.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/configuration_bits.o.d ${OBJECTDIR}/main.o.d ${OBJECTDIR}/U1.o.d ${OBJECTDIR}/timer1.o.d ${OBJECTDIR}/mem.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/configuration_bits.o ${OBJECTDIR}/main.o ${OBJECTDIR}/U1.o ${OBJECTDIR}/timer1.o
+OBJECTFILES=${OBJECTDIR}/configuration_bits.o ${OBJECTDIR}/main.o ${OBJECTDIR}/U1.o ${OBJECTDIR}/timer1.o ${OBJECTDIR}/mem.o
 
 # Source Files
-SOURCEFILES=configuration_bits.c main.c U1.c timer1.c
+SOURCEFILES=configuration_bits.c main.c U1.c timer1.c mem.c
 
 
 CFLAGS=
@@ -115,6 +115,12 @@ ${OBJECTDIR}/timer1.o: timer1.c  nbproject/Makefile-${CND_CONF}.mk
 	@${RM} ${OBJECTDIR}/timer1.o 
 	@${FIXDEPS} "${OBJECTDIR}/timer1.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -O1 -funroll-loops -MMD -MF "${OBJECTDIR}/timer1.o.d" -o ${OBJECTDIR}/timer1.o timer1.c   
 	
+${OBJECTDIR}/mem.o: mem.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR} 
+	@${RM} ${OBJECTDIR}/mem.o.d 
+	@${RM} ${OBJECTDIR}/mem.o 
+	@${FIXDEPS} "${OBJECTDIR}/mem.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE) -g -D__DEBUG -D__MPLAB_DEBUGGER_PK3=1 -fframe-base-loclist  -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -O1 -funroll-loops -MMD -MF "${OBJECTDIR}/mem.o.d" -o ${OBJECTDIR}/mem.o mem.c   
+	
 else
 ${OBJECTDIR}/configuration_bits.o: configuration_bits.c  nbproject/Makefile-${CND_CONF}.mk
 	@${MKDIR} ${OBJECTDIR} 
@@ -139,6 +145,12 @@ ${OBJECTDIR}/timer1.o: timer1.c  nbproject/Makefile-${CND_CONF}.mk
 	@${RM} ${OBJECTDIR}/timer1.o.d 
 	@${RM} ${OBJECTDIR}/timer1.o 
 	@${FIXDEPS} "${OBJECTDIR}/timer1.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -O1 -funroll-loops -MMD -MF "${OBJECTDIR}/timer1.o.d" -o ${OBJECTDIR}/timer1.o timer1.c   
+	
+${OBJECTDIR}/mem.o: mem.c  nbproject/Makefile-${CND_CONF}.mk
+	@${MKDIR} ${OBJECTDIR} 
+	@${RM} ${OBJECTDIR}/mem.o.d 
+	@${RM} ${OBJECTDIR}/mem.o 
+	@${FIXDEPS} "${OBJECTDIR}/mem.o.d" $(SILENT) -rsi ${MP_CC_DIR}../  -c ${MP_CC}  $(MP_EXTRA_CC_PRE)  -g -x c -c -mprocessor=$(MP_PROCESSOR_OPTION) -O1 -funroll-loops -MMD -MF "${OBJECTDIR}/mem.o.d" -o ${OBJECTDIR}/mem.o mem.c   
 	
 endif
 

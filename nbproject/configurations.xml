@@ -6,6 +6,7 @@
                    projectFiles="true">
       <itemPath>U1.h</itemPath>
       <itemPath>timer1.h</itemPath>
+      <itemPath>mem.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -18,6 +19,7 @@
       <itemPath>main.c</itemPath>
       <itemPath>U1.c</itemPath>
       <itemPath>timer1.c</itemPath>
+      <itemPath>mem.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

@@ -39,27 +39,16 @@
 #include <stdbool.h>
 #include "timer1.h"
 #include "U1.h"
+#include "mem.h"
 
 #define SYS_CLK 100000000L // 100MHz
-
-#define CCLR    BIT_2
-#define CLK     BIT_3
-#define CE1     BIT_0
-#define CE2     BIT_1
-#define WE1     BIT_8
-#define WE2     BIT_7
 
 float time_base = 0.0;
 
 //	Function Prototypes
 int main(void);
 void delay(volatile unsigned int count);
-void mem_init();
-void inline __attribute__((always_inline)) mem_reset_addr();
-void inline __attribute__((always_inline)) mem_write_init();
-void inline __attribute__((always_inline)) mem_write_16(unsigned int data);
-void inline __attribute__((always_inline)) mem_read_init();
-unsigned int inline __attribute__((always_inline)) mem_read_16();
+
 void mem_test_16();
 
 int main(void) {
@@ -107,89 +96,6 @@ int main(void) {
 void delay(volatile unsigned int count)
 {
     while(--count);
-}
-
-void mem_init()
-{
-    PORTSetPinsDigitalOut(IOPORT_F, CCLR | CLK | WE1 | WE2 | CE1 | CE2);
-    mPORTFWrite(0x0000);
-    mem_reset_addr();
-}
-
-void inline __attribute__((always_inline)) mem_reset_addr()
-{
-    float time;
-    char buffer[80];
-    timer1_start_us();
-
-    mPORTFClearBits(CLK | CCLR);
-    mPORTFSetBits(CCLR);
-
-    time = timer1_end_us() - time_base;
-    sprintf(buffer, "mem_reset_addr(): %f us\r\n", time);
-    U1_write(buffer);
-}
-
-void inline __attribute__((always_inline)) mem_write_init()
-{
-    float time;
-    char buffer[80];
-    timer1_start_us();
-
-    mPORTDSetPinsDigitalOut(0xFFFF);
-    mPORTDWrite(0x0000);
-
-    time = timer1_end_us() - time_base;
-    sprintf(buffer, "mem_write_init(): %f us\r\n", time);
-    U1_write(buffer);
-}
-
-void inline __attribute__((always_inline)) mem_write_16(unsigned int data)
-{
-//    float time;
-//    char buffer[80];
-//    timer1_start_us();
-
-    mPORTFSetBits(WE1 | WE2 | CE1 | CE2 | CLK);
-    mPORTDWrite(data); // write data
-    __asm("nop");
-    mPORTFClearBits(WE1 | WE2 | CE1 | CE2 | CLK);
-    __asm("nop");
-
-//    time = timer1_end_us() - time_base;
-//    sprintf(buffer, "mem_write_16(): %f us\r\n", time);
-//    U1_write(buffer);
-}
-
-void inline __attribute__((always_inline)) mem_read_init()
-{
-    float time;
-    char buffer[80];
-    timer1_start_us();
-
-    mPORTDSetPinsDigitalIn(0xFFFF);
-    mPORTFSetBits(WE1 | WE2);
-    mPORTFClearBits(CLK | CE1 | CE2);
-
-    time = timer1_end_us() - time_base;
-    sprintf(buffer, "mem_read_init(): %f us\r\n", time);
-    U1_write(buffer);
-}
-
-unsigned int inline __attribute__((always_inline)) mem_read_16()
-{
-    mPORTFSetBits(CLK); // increment address
-    __asm("nop");
-    __asm("nop");
-    __asm("nop");
-    __asm("nop");
-    mPORTFClearBits(CLK);
-    __asm("nop");
-    __asm("nop");
-    __asm("nop");
-    __asm("nop");
-
-    return mPORTDRead();
 }
 
 #define values 307200

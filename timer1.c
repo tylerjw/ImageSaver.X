@@ -7,7 +7,7 @@ volatile int counter = 0;
 void inline __attribute__((always_inline)) timer1_init()
 {
     ConfigIntTimer1(T1_INT_ON | T1_INT_PRIOR_2); // configure interrupt
-    INTEnableSystemMultiVectoredInt();
+    //INTEnableSystemMultiVectoredInt(); // done in main
 }
 
 void inline __attribute__((always_inline)) timer1_start_us()

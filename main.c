@@ -43,6 +43,9 @@
 
 #define SYS_CLK 100000000L // 100MHz
 
+#define VSYNC   BIT_1
+#define HREF    BIT_2
+
 float time_base = 0.0;
 
 //	Function Prototypes
@@ -51,15 +54,20 @@ void delay(volatile unsigned int count);
 void mem_test_16();
 void mem_test_lines();
 
+void camera_init();
+void camera_config(unsigned char, unsigned char);
+void camera_capture();
+
 int main(void) {
     char buffer[80];
     unsigned int pb_clock;
     float actual_baud;
-    const int baud = 500000; // max baud rate using arduino interface 
+    const int baud = 500000; // max baud rate using arduino interface
 
     pb_clock = SYSTEMConfigPerformance(SYS_CLK); // if sys_clock > 100MHz, pb_clock = sys_clock/2 else pb_clock = sys_clock
+    INTEnableSystemMultiVectoredInt(); // needed for timer1 library
 
-    PORTSetPinsDigitalOut(IOPORT_E, BIT_4); // led
+    PORTSetPinsDigitalOut(IOPORT_E, BIT_8); // led
 
     // setup UART
     PPSUnLock;
@@ -68,29 +76,105 @@ int main(void) {
     PPSLock;
     
     actual_baud = U1_init(pb_clock, baud);
-    /*
-    sprintf(buffer, "SYSCLK: %d\r\n", SYS_CLK);
-    U1_write(buffer);
-    sprintf(buffer, "PBCLK: %d\r\n", pb_clock);
-    U1_write(buffer);
-    sprintf(buffer, "U1BRG: %d\r\n", U1BRG);
-    U1_write(buffer);
-    sprintf(buffer, "target baud: %d\r\n", baud);
-    U1_write(buffer);
-    sprintf(buffer, "actual baud: %f\r\n", actual_baud);
-    U1_write(buffer);
-    */
+    
     U1_write("Initializing timer1... \r\n");
     timer1_init();
-    U1_write("Running memory test... \r\n");
-    mem_test_lines();
-
+    U1_write("Initializing camera... \r\n");
+    camera_init();
+    U1_write("Capturing an image... \r\n");
+    camera_capture();
+    U1_write("Image stored in memory. \r\n");
+    
     while (1) {
         mPORTEWrite(0);
         timer1_delay_ms(1000);
-        mPORTEWrite(BIT_4);
+        mPORTEWrite(BIT_8);
         timer1_delay_ms(1000);
     }
+}
+
+void camera_init()
+{
+    // initialize the memory
+    mem_init();
+
+    // initialize the camera
+    OpenI2C1(I2C_EN, 0x037); // 100 kHz clock
+    camera_config(0x11, 0x84); // 2MHz PCLK
+
+    PORTSetPinsDigitalIn(IOPORT_E, 0xff); // bits 0 - 7, data in
+    PORTSetPinsDigitalIn(IOPORT_C, VSYNC | HREF); // vsync and href configured as inputs
+
+    INTCON |= BIT_2; // Falling edge interrupt on INT2 (PCLK)
+
+    // setup PCLK interrupt
+    PPSUnLock;
+    PPSInput(3,INT2,RPC3); // Rx INT2 on C3
+    PPSLock;
+    mINT2SetIntPriority(2);
+
+    CNENC = HREF; // setup change notice interrupt for HREF
+    CNCONC = BIT_15;
+}
+
+void camera_capture()
+{
+    // capture an image
+
+    // reset memory addressing
+    mem_reset_addr();
+    // setup to store in bank 1
+    mPORTDDirection(0xff00); // 0 - output, 1 - input
+    mPORTDWrite(0x0000);
+
+    // wait for rise and fall of vsync
+    while((mPORTCRead() & VSYNC) == 0); // wait for it to go high
+    while((mPORTCRead() & VSYNC) != 0); // wait for it to go low
+
+    // enable HSYNC Change Notice Int
+    IEC1SET = BIT_14;
+
+    while((mPORTCRead() & VSYNC) == 0); // wait for the notice of the next frame
+
+    IEC1CLR = BIT_14; // disable HSYNC interrupt
+}
+
+void __ISR(33, ipl1) _CNCHandler(void) // change notice C handler (HREF)
+{
+    IFS1CLR = BIT_14; // clear the flag
+    if(mPORTCRead() & HREF) // rising
+    {
+        // store the first pixel
+        mPORTFSetBits(WE1 | CE1 | CLK);
+        mPORTDWrite(mPORTERead()); // write the data
+        mPORTFClearBits(WE1 | CE1 | CLK);
+        // enable PCLK interrupt
+        IEC0SET = BIT_13;
+    } else { // falling
+        // disable PCLK interrupt
+        IEC0CLR = BIT_13;
+    }
+}
+
+void __ISR(11, ipl2) _INT2Handler(void) // external interrupt 2 (PCLK)
+{
+    mPORTFSetBits(WE1 | CE1 | CLK);
+    mPORTDWrite(mPORTERead()); // write the data
+    mPORTFClearBits(WE1 | CE1 | CLK);
+}
+
+void camera_config(unsigned char reg, unsigned char value)
+{
+    StartI2C1(); //Send the Start Bit
+    IdleI2C1();//Wait to complete
+    I2C1TRN = 0x42; // write address
+    IdleI2C1();//Wait to complete
+    I2C1TRN = reg; // CLKRC
+    IdleI2C1();//Wait to complete
+    I2C1TRN = value; // value
+    IdleI2C1();//Wait to complete
+    StopI2C1(); //Send the Stop condition
+    IdleI2C1();//Wait to complete
 }
 
 void delay(volatile unsigned int count)

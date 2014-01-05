@@ -36,6 +36,7 @@
 #include <p32xxxx.h>
 #include <plib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include "timer1.h"
 #include "U1.h"
@@ -58,11 +59,13 @@ void camera_init();
 void camera_config(unsigned char, unsigned char);
 void camera_capture();
 
+void image_output_test();
+
 int main(void) {
     char buffer[80];
     unsigned int pb_clock;
     float actual_baud;
-    const int baud = 500000; // max baud rate using arduino interface
+    const int baud = 460800; // max baud rate using arduino interface
 
     pb_clock = SYSTEMConfigPerformance(SYS_CLK); // if sys_clock > 100MHz, pb_clock = sys_clock/2 else pb_clock = sys_clock
     INTEnableSystemMultiVectoredInt(); // needed for timer1 library
@@ -77,13 +80,15 @@ int main(void) {
     
     actual_baud = U1_init(pb_clock, baud);
     
-    U1_write("Initializing timer1... \r\n");
+//    U1_write("Initializing timer1... \r\n");
     timer1_init();
-    U1_write("Initializing camera... \r\n");
-    camera_init();
-    U1_write("Capturing an image... \r\n");
-    camera_capture();
-    U1_write("Image stored in memory. \r\n");
+//    U1_write("Initializing camera... \r\n");
+//    camera_init();
+//    U1_write("Capturing an image... \r\n");
+//    camera_capture();
+//    U1_write("Image stored in memory. \r\n");
+
+    image_output_test();
     
     while (1) {
         mPORTEWrite(0);
@@ -91,6 +96,39 @@ int main(void) {
         mPORTEWrite(BIT_8);
         timer1_delay_ms(1000);
     }
+}
+
+void image_output_test()
+{
+    char c = 0;
+    int i, j;
+    char r, g, b;
+    r = g = b = 0; // color values
+
+    mPORTEWrite(0);
+    while(c != 'x')
+    {
+        while( !U1STAbits.URXDA);   // wait until data available in RX buffer
+        c = U1RXREG;          // read a character
+    }
+    mPORTEWrite(BIT_8);
+    // send the image
+    for(i=0;i<480;i++)
+    {
+        for(j=0;j<640;j++)
+        {
+            while( U1STAbits.UTXBF);    // wait while TX buffer full
+            U1TXREG = r;                // send value
+            while( U1STAbits.UTXBF);    // wait while TX buffer full
+            U1TXREG = g;                // send value
+            while( U1STAbits.UTXBF);    // wait while TX buffer full
+            U1TXREG = b;                // send value
+            g++;
+            r+=2;
+        }
+        b++;
+    }
+    mPORTEWrite(0);
 }
 
 void camera_init()

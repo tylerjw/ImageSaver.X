@@ -60,12 +60,15 @@ void camera_config(unsigned char, unsigned char);
 void camera_capture();
 
 void image_output_test();
+void image_to_memory_test();
+void image_output_memory();
 
 int main(void) {
     char buffer[80];
     unsigned int pb_clock;
     float actual_baud;
-    const int baud = 460800; // max baud rate using arduino interface
+    //const int baud = 460800; // max baud rate using arduino interface
+    const int baud = 115200; // max baud rate using arduino interface
 
     pb_clock = SYSTEMConfigPerformance(SYS_CLK); // if sys_clock > 100MHz, pb_clock = sys_clock/2 else pb_clock = sys_clock
     INTEnableSystemMultiVectoredInt(); // needed for timer1 library
@@ -88,7 +91,11 @@ int main(void) {
 //    camera_capture();
 //    U1_write("Image stored in memory. \r\n");
 
-    image_output_test();
+    mPORTEWrite(BIT_8);
+    mem_init();
+    image_to_memory_test();
+    mPORTEWrite(0);
+    image_output_memory();
     
     while (1) {
         mPORTEWrite(0);
@@ -102,8 +109,7 @@ void image_output_test()
 {
     char c = 0;
     int i, j;
-    char r, g, b;
-    r = g = b = 0; // color values
+    char v = 0;
 
     mPORTEWrite(0);
     while(c != 'x')
@@ -115,18 +121,58 @@ void image_output_test()
     // send the image
     for(i=0;i<480;i++)
     {
+        v=0;
         for(j=0;j<640;j++)
         {
             while( U1STAbits.UTXBF);    // wait while TX buffer full
-            U1TXREG = r;                // send value
-            while( U1STAbits.UTXBF);    // wait while TX buffer full
-            U1TXREG = g;                // send value
-            while( U1STAbits.UTXBF);    // wait while TX buffer full
-            U1TXREG = b;                // send value
-            g++;
-            r+=2;
+            U1TXREG = v++;                // send value
         }
-        b++;
+    }
+    mPORTEWrite(0);
+}
+
+void image_to_memory_test()
+{
+    int i, j;
+    unsigned char c = 0;
+    
+    mem_reset_addr();
+    mem_write_init();
+    
+    for(i=0;i<480;i++)
+    {
+        for(j=0;j<640;j++)
+        {
+            mem_write_16(c++);
+        }
+    }
+}
+
+void image_output_memory()
+{
+    char c = 0;
+    int i, j;
+    char v = 0;
+
+    mem_reset_addr();
+    mem_read_init();
+
+    mPORTEWrite(0);
+    while(c != 'x')
+    {
+        while( !U1STAbits.URXDA);   // wait until data available in RX buffer
+        c = U1RXREG;          // read a character
+    }
+    mPORTEWrite(BIT_8);
+    // send the image
+    for(i=0;i<480;i++)
+    {
+        v=0;
+        for(j=0;j<640;j++)
+        {
+            while( U1STAbits.UTXBF);    // wait while TX buffer full
+            U1TXREG = (unsigned char) (mem_read_16() & 0xff); // send value
+        }
     }
     mPORTEWrite(0);
 }
